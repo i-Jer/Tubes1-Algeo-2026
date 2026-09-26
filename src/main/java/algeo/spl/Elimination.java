@@ -1,15 +1,22 @@
 package algeo.spl;
 
 import algeo.matrix.Matrix;
+import java.util.Locale;
 
 public class Elimination{
-    private static final double EPSILON = 1e-9;
+    public static final double EPSILON = 1e-13;
+
+    public static int toRowEchelonForm(Matrix m){
+        return toRowEchelonForm(m, null);
+    }
 
     //ubah matriks menjadi matriks eselon baris dengan partial pivot
-    public static void toRowEchelonForm(Matrix m){
+    //mengembalikan jumlah pertukaran baris (dipake determinan), steps = null kalo langkah tidak ditampilkan
+    public static int toRowEchelonForm(Matrix m, StringBuilder steps){
         int rows = m.getRows();
         int cols = m.getCols();
         int pivotRow = 0;
+        int swaps = 0;
 
         for (int col = 0; col < cols && pivotRow < rows; col++){
             int maxRow = pivotRow;
@@ -26,21 +33,33 @@ public class Elimination{
                 continue;
             }
 
-            m.swapRows(pivotRow, maxRow);
+            if (maxRow != pivotRow){
+                m.swapRows(pivotRow, maxRow);
+                swaps++;
+                if (steps != null) steps.append(String.format("R%d <-> R%d%n", pivotRow + 1, maxRow + 1));
+            }
 
             for (int r = pivotRow + 1; r < rows; r++){
                 double factor = -m.get(r, col) / m.get(pivotRow, col);
+                if (factor == 0.0) continue;
                 m.addRowMultiple(pivotRow, r, factor);
                 m.set(r, col, 0.0);
+                if (steps != null) steps.append(String.format(Locale.US, "R%d = R%d + (%.3f) R%d%n", r + 1, r + 1, Matrix.round3(factor), pivotRow + 1));
             }
+            if (steps != null) steps.append(m).append('\n');
 
             pivotRow++;
         }
+        return swaps;
+    }
+
+    public static void toReducedRowEchelonForm(Matrix m){
+        toReducedRowEchelonForm(m, null);
     }
 
     //ubah matriks menjadi matriks eleson baris tereduksi dengan partial pivot
-    public static void toReducedRowEchelonForm(Matrix m){
-        toRowEchelonForm(m);
+    public static void toReducedRowEchelonForm(Matrix m, StringBuilder steps){
+        toRowEchelonForm(m, steps);
 
         int rows = m.getRows();
         int cols = m.getCols();
@@ -57,12 +76,16 @@ public class Elimination{
             if (pivotCol != -1){
                 double pivotVal = m.get(r, pivotCol);
                 m.multiplyRow(r, 1.0 / pivotVal);
+                if (steps != null) steps.append(String.format(Locale.US, "R%d = R%d / (%.3f)%n", r + 1, r + 1, Matrix.round3(pivotVal)));
 
                 for (int aboveRow = r - 1; aboveRow >= 0; aboveRow--){
                     double factor = -m.get(aboveRow, pivotCol);
+                    if (factor == 0.0) continue;
                     m.addRowMultiple(r, aboveRow, factor);
                     m.set(aboveRow, pivotCol, 0.0);
+                    if (steps != null) steps.append(String.format(Locale.US, "R%d = R%d + (%.3f) R%d%n", aboveRow + 1, aboveRow + 1, Matrix.round3(factor), r + 1));
                 }
+                if (steps != null) steps.append(m).append('\n');
             }
         }
     }
