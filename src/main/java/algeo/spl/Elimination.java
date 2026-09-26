@@ -39,7 +39,7 @@ public class Elimination{
                 }
             }
 
-            if (maxValue < tol){
+            if (maxValue <= tol){
                 continue;
             }
 
@@ -69,11 +69,12 @@ public class Elimination{
 
     //ubah matriks menjadi matriks eleson baris tereduksi dengan partial pivot
     public static void toReducedRowEchelonForm(Matrix m, StringBuilder steps){
+        double tol = tolerance(m);
         toRowEchelonForm(m, steps);
 
         int rows = m.getRows();
         int cols = m.getCols();
-        double tol = tolerance(m);
+        
 
         for (int r = rows - 1; r >= 0; r--){
             int pivotCol = -1;
