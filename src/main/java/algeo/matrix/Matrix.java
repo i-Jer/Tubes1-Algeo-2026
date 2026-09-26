@@ -18,10 +18,22 @@ public class Matrix {
     }
 
     public Matrix(double[][] source){
+        if (source == null || source.length == 0){
+            throw new IllegalArgumentException("Matriks harus memiliki minimal 1 baris");
+        }
+        if (source[0] == null || source[0].length == 0){
+            throw new IllegalArgumentException("Matriks harus memiliki minimal 1 kolom");
+        }
         this.rows = source.length;
-        this.cols = rows == 0 ? 0 : source[0].length;
+        this.cols = source[0].length;
         this.data = new double[rows][cols];
         for (int i = 0; i < rows; i++){
+            //jumlah kolom tiap baris harus sama
+            if (source[i] == null || source[i].length != cols){
+                int found = source[i] == null ? 0 : source[i].length;
+                throw new IllegalArgumentException(String.format(
+                    "Baris ke-%d memiliki %d kolom, seharusnya %d kolom", i + 1, found, cols));
+            }
             System.arraycopy(source[i], 0, this.data[i], 0, cols);
         }
     }
@@ -47,12 +59,60 @@ public class Matrix {
     }
 
     public void addRowMultiple(int sourceRow, int targetRow, double factor){
-        for (int c = 0; c < cols; c++){
-            data[targetRow][c] += factor * data[sourceRow][c];
-        }
+        addRowMultiple(sourceRow, targetRow, factor, 0);
+    }
+
+    public void addRowMultiple(int sourceRow, int targetRow, double factor, int startCol){
+        if(factor == 0.0) return;
+        double[] src = data[sourceRow];
+        double[] dst = data[targetRow];
+        for(int c = startCol; c < cols; c++) dst[c] += factor * src[c];
     }
 
     //dibawah ini operasi aljabar matriks
+
+    //Penjumlahan matriks A + B
+    public Matrix add(Matrix other){
+        requireSameSize(other, "penjumlahan");
+        Matrix res = new Matrix(rows, cols);
+        for(int i = 0; i < rows; i++){
+            for(int j = 0; j < cols; j++){
+                res.data[i][j] = data[i][j] + other.data[i][j];
+            }
+        }
+        return res;
+    }
+
+    //Pengurangan matriks A - B
+    public Matrix subtract(Matrix other){
+        requireSameSize(other, "pengurangan");
+        Matrix res = new Matrix(rows, cols);
+        for(int i = 0; i < rows; i++){
+            for(int j = 0; j < cols; j++){
+                res.data[i][j] = data[i][j] - other.data[i][j];
+            }
+        }
+        return res;
+    }
+
+    private void requireSameSize(Matrix other, String operation){
+        if(this.rows != other.rows || this.cols != other.cols){
+            throw new IllegalArgumentException(String.format(
+                "Dimensi tidak cocok untuk %s matriks (%dx%d dan %dx%d)",
+                operation, rows, cols, other.rows, other.cols));
+        }
+    }
+
+    //Perkalian skalar k * A
+    public Matrix multiply(double scalar){
+        Matrix res = new Matrix(rows, cols);
+        for(int i = 0; i < rows; i++){
+            for(int j = 0; j < cols; j++){
+                res.data[i][j] = scalar * data[i][j];
+            }
+        }
+        return res;
+    }
     
     //Perkalian matriks A dan B
     public Matrix multiply(Matrix other) {
@@ -85,6 +145,12 @@ public class Matrix {
 
     //Hapus 1 baris dan 1 kolom (buat ekspansi kofaktor atau adjoin)
     public Matrix submatrix(int skipRow, int skipCol){
+        if(rows < 2 || cols < 2){
+            throw new IllegalArgumentException("Submatriks minor hanya bisa dibentuk dari matriks minimal 2x2");
+        }
+        if(skipRow < 0 || skipRow >= rows || skipCol < 0 || skipCol >= cols){
+            throw new IndexOutOfBoundsException("Indeks baris/kolom yang dihapus di luar matriks");
+        }
         Matrix res = new Matrix(rows - 1, cols - 1);
         int ri = 0;
         for (int i = 0; i < rows; i++){
@@ -96,6 +162,20 @@ public class Matrix {
                 rj++;
             }
             ri++;
+        }
+        return res;
+    }
+
+    public Matrix slice(int rowStart, int rowEnd, int colStart, int colEnd){
+        if(rowStart < 0 || rowEnd > rows || rowStart >= rowEnd
+                || colStart < 0 || colEnd > cols || colStart >= colEnd){
+            throw new IndexOutOfBoundsException(String.format(
+                "Blok [%d..%d) x [%d..%d) tidak valid untuk matriks %dx%d",
+                rowStart, rowEnd, colStart, colEnd, rows, cols));
+        }
+        Matrix res = new Matrix(rowEnd - rowStart, colEnd - colStart);
+        for(int i = rowStart; i < rowEnd; i++){
+            System.arraycopy(data[i], colStart, res.data[i - rowStart], 0, colEnd - colStart);
         }
         return res;
     }
@@ -132,8 +212,19 @@ public class Matrix {
     }
 
     public static double round3(double v){
-        if (Math.abs(v) < 1e-9) v = 0.0;
-        return Math.round(v * 1000.0) / 1000.0;
+        if(!Double.isFinite(v) || Math.abs(v) >= 1e15) return v;
+        double r = Math.round(Math.abs(v) * 1000.0) / 1000.0;
+        if(r == 0.0) return 0.0;
+        return v < 0 ? -r : r;
+    }
+
+    public static String formatNumber(double v){
+        String s = String.format(Locale.US, "%.3f", round3(v));
+        if(s.indexOf('.') >= 0){
+            s = s.replaceAll("0+$", "");
+            if(s.endsWith(".")) s = s.substring(0, s.length() - 1);
+        }
+        return s;
     }
 
     @Override
