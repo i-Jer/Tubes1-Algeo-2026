@@ -4,7 +4,16 @@ import algeo.matrix.Matrix;
 import java.util.Locale;
 
 public class Elimination{
-    public static final double EPSILON = 1e-13;
+
+    public static double tolerance(Matrix m){
+        double maxAbs = 0.0;
+        for (int r = 0; r < m.getRows(); r++){
+            for (int c = 0; c < m.getCols(); c++){
+                maxAbs = Math.max(maxAbs, Math.abs(m.get(r, c)));
+            }
+        }
+        return maxAbs * Math.max(m.getRows(), m.getCols()) * 1e-15;
+    }
 
     public static int toRowEchelonForm(Matrix m){
         return toRowEchelonForm(m, null);
@@ -17,6 +26,7 @@ public class Elimination{
         int cols = m.getCols();
         int pivotRow = 0;
         int swaps = 0;
+        double tol = tolerance(m);
 
         for (int col = 0; col < cols && pivotRow < rows; col++){
             int maxRow = pivotRow;
@@ -29,7 +39,7 @@ public class Elimination{
                 }
             }
 
-            if (maxValue < EPSILON){
+            if (maxValue < tol){
                 continue;
             }
 
@@ -63,11 +73,12 @@ public class Elimination{
 
         int rows = m.getRows();
         int cols = m.getCols();
+        double tol = tolerance(m);
 
         for (int r = rows - 1; r >= 0; r--){
             int pivotCol = -1;
             for (int c = 0; c < cols; c++) {
-                if (Math.abs(m.get(r, c)) > EPSILON){
+                if (Math.abs(m.get(r, c)) > tol){
                     pivotCol = c;
                     break;
                 }
