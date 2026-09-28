@@ -42,10 +42,12 @@ public class Elimination{
             if (maxValue <= tol){
                 continue;
             }
+            boolean changed = false;
 
             if (maxRow != pivotRow){
                 m.swapRows(pivotRow, maxRow);
                 swaps++;
+                changed = true;
                 if (steps != null) steps.append(String.format("R%d <-> R%d%n", pivotRow + 1, maxRow + 1));
             }
 
@@ -54,9 +56,10 @@ public class Elimination{
                 if (factor == 0.0) continue;
                 m.addRowMultiple(pivotRow, r, factor);
                 m.set(r, col, 0.0);
+                changed = true;
                 if (steps != null) steps.append(String.format(Locale.US, "R%d = R%d + (%.3f) R%d%n", r + 1, r + 1, Matrix.round3(factor), pivotRow + 1));
             }
-            if (steps != null) steps.append(m).append('\n');
+            if(steps != null && changed) steps.append(m).append('\n');
 
             pivotRow++;
         }
@@ -87,17 +90,22 @@ public class Elimination{
 
             if (pivotCol != -1){
                 double pivotVal = m.get(r, pivotCol);
-                m.multiplyRow(r, 1.0 / pivotVal);
-                if (steps != null) steps.append(String.format(Locale.US, "R%d = R%d / (%.3f)%n", r + 1, r + 1, Matrix.round3(pivotVal)));
+                boolean changed = false;
+                if(pivotVal != 1.0){
+                    m.multiplyRow(r, 1.0 / pivotVal);
+                    changed = true;
+                    if (steps != null) steps.append(String.format(Locale.US, "R%d = R%d / (%.3f)%n", r + 1, r + 1, Matrix.round3(pivotVal)));
+                }
 
                 for (int aboveRow = r - 1; aboveRow >= 0; aboveRow--){
                     double factor = -m.get(aboveRow, pivotCol);
                     if (factor == 0.0) continue;
                     m.addRowMultiple(r, aboveRow, factor);
                     m.set(aboveRow, pivotCol, 0.0);
+                    changed = true;
                     if (steps != null) steps.append(String.format(Locale.US, "R%d = R%d + (%.3f) R%d%n", aboveRow + 1, aboveRow + 1, Matrix.round3(factor), r + 1));
                 }
-                if (steps != null) steps.append(m).append('\n');
+                if(steps != null && changed) steps.append(m).append('\n');
             }
         }
     }
