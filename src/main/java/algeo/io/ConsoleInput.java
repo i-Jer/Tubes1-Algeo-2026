@@ -12,10 +12,12 @@ public class ConsoleInput {
     }
 
     public String readLine(String prompt){
-        System.out.print(prompt);
+        System.out.print(Style.prompt(prompt));
+        if(!sc.hasNextLine()){
+            throw new InputEndException();
+        }
         return sc.nextLine().trim();
     }
-
     public String readNonEmptyLine(String prompt){
         while(true){
             String s = readLine(prompt);
