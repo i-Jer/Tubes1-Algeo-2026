@@ -1,8 +1,12 @@
 package algeo.spl;
 
+import algeo.determinant.Determinant;
+import algeo.inverse.Inverse;
 import algeo.matrix.Matrix;
 
 public class SPLSolver {
+    public static final int MAX_CRAMER_SIZE = 100;
+
     // Metode eliminasi Gauss
     public static SPLResult gauss(Matrix aug, StringBuilder steps){
         Matrix m = aug.copy();
@@ -79,5 +83,75 @@ public class SPLSolver {
 
         SPLResult.Type type = numFree == 0 ? SPLResult.Type.UNIQUE : SPLResult.Type.INFINITE;
         return new SPLResult(type, expr);
+    }
+    
+    // Metode matriks balikan
+    public static SPLResult inverseMethod(Matrix aug, StringBuilder steps){
+        requireSquareSystem(aug, "Metode matriks balikan");
+        int n = aug.getRows();
+        Matrix a = aug.slice(0, n, 0, n);
+        Matrix b = aug.slice(0, n, n, n + 1);
+
+        Matrix inv;
+        try{
+            inv = Inverse.byGaussJordan(a, steps);
+        } catch(ArithmeticException e){
+            throw new ArithmeticException("Metode matriks balikan tidak dapat digunakan: " + e.getMessage()
+                + ". Gunakan metode Gauss atau Gauss-Jordan");
+        }
+        Matrix x = inv.multiply(b);
+        if(steps != null){
+            steps.append("A^-1:\n").append(inv).append('\n');
+            steps.append("x = A^-1 b:\n").append(x).append('\n');
+        }
+
+        double[][] expr = new double[n][1];
+        for(int i = 0; i < n; i++){
+            expr[i][0] = x.get(i, 0);
+        }
+        return new SPLResult(SPLResult.Type.UNIQUE, expr);
+    }
+
+    // Kaidah Cramer
+    public static SPLResult cramer(Matrix aug, StringBuilder steps){
+        requireSquareSystem(aug, "Kaidah Cramer");
+        int n = aug.getRows();
+        if(n > MAX_CRAMER_SIZE){
+            throw new IllegalArgumentException("Kaidah Cramer hanya untuk SPL hingga " + MAX_CRAMER_SIZE
+                + " variabel, gunakan metode Gauss atau Gauss-Jordan");
+        }
+        Matrix a = aug.slice(0, n, 0, n);
+
+        double det = Determinant.byRowReduction(a, null);
+        if(steps != null) steps.append("det(A) = ").append(Matrix.formatNumber(det)).append('\n');
+        if(det == 0.0){
+            throw new ArithmeticException("Kaidah Cramer tidak dapat digunakan karena det(A) = 0."
+                + " Gunakan metode Gauss atau Gauss-Jordan");
+        }
+
+        double[][] expr = new double[n][1];
+        for(int i = 0; i < n; i++){
+            Matrix ai = a.copy();
+            for(int r = 0; r < n; r++){
+                ai.set(r, i, aug.get(r, n));
+            }
+            double deti = Determinant.byRowReduction(ai, null);
+            expr[i][0] = deti / det;
+            if(steps != null){
+                steps.append(String.format("A%d (kolom %d diganti b):%n", i + 1, i + 1)).append(ai);
+                steps.append(String.format("det(A%d) = %s, x%d = %s / %s = %s%n%n", i + 1, Matrix.formatNumber(deti),
+                    i + 1, Matrix.formatNumber(deti), Matrix.formatNumber(det), Matrix.formatNumber(expr[i][0])));
+            }
+        }
+        return new SPLResult(SPLResult.Type.UNIQUE, expr);
+    }
+
+    //metode balikan dan Cramer hanya untuk SPL dengan jumlah persamaan = jumlah variabel
+    private static void requireSquareSystem(Matrix aug, String method){
+        int n = aug.getCols() - 1;
+        if(n < 1 || aug.getRows() != n){
+            throw new IllegalArgumentException(method + " tidak dapat digunakan karena jumlah persamaan ("
+                + aug.getRows() + ") tidak sama dengan jumlah variabel (" + n + "). Gunakan metode Gauss atau Gauss-Jordan");
+        }
     }
 }
