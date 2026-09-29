@@ -8,11 +8,10 @@ import java.util.Arrays;
 public class SplineRegression {
     public static final int MAX_POINTS = 10;
 
-    private final int degree;
     private final double[] knots;
     private final double[] beta;
 
-    public SplineRegression(double[] x, double[] y, double[] knotsInput, int degree, StringBuilder steps){
+    public SplineRegression(double[] x, double[] y, double[] knotsInput, StringBuilder steps){
         if(x == null || y == null || knotsInput == null){
             throw new IllegalArgumentException("Data titik dan knot tidak boleh null");
         }
@@ -22,11 +21,7 @@ public class SplineRegression {
         if(x.length > MAX_POINTS){
             throw new IllegalArgumentException("Jumlah titik maksimal " + MAX_POINTS);
         }
-        if(degree < 1 || degree > 3){
-            throw new IllegalArgumentException("Derajat spline harus 1, 2, atau 3");
-        }
 
-        this.degree = degree;
         knots = knotsInput.clone();
         Arrays.sort(knots);
         for(int k = 0; k < knots.length - 1; k++){
@@ -36,10 +31,10 @@ public class SplineRegression {
         }
 
         int n = x.length;
-        int basis = degree + 1 + knots.length;
-        if(n < basis){
-            throw new IllegalArgumentException("Jumlah titik (" + n + ") harus minimal sama dengan jumlah basis ("
-                + basis + " = " + (degree + 1) + " + " + knots.length + " knot)");
+        int basis = 4 + knots.length;
+        if(n <= basis){
+            throw new IllegalArgumentException("Jumlah titik (" + n + ") harus lebih banyak dari jumlah basis M = 4 + "
+                + knots.length + " = " + basis);
         }
 
         Matrix xMat = new Matrix(n, basis);
@@ -61,23 +56,19 @@ public class SplineRegression {
 
         SPLResult res = SPLSolver.gauss(aug, steps);
         if(res.getType() != SPLResult.Type.UNIQUE){
-            throw new ArithmeticException("X^T X singular atau hampir singular, koefisien tidak dapat ditentukan. Periksa posisi knot (harus di antara data) dan jumlah titik dengan nilai x berbeda");
+            throw new ArithmeticException("X^T X singular atau hampir singular, koefisien tidak dapat ditentukan."
+                + " Periksa posisi knot (harus di antara data) dan jumlah titik dengan nilai x berbeda");
         }
         beta = res.getSolution();
     }
 
     private double basisValue(double t, int j){
-        if(j <= degree) return power(t, j);
-        double u = t - knots[j - degree - 1];
-        return u > 0 ? power(u, degree) : 0.0;
-    }
-
-    private static double power(double base, int exp){
-        double r = 1.0;
-        for(int i = 0; i < exp; i++){
-            r *= base;
-        }
-        return r;
+        if(j == 0) return 1.0;
+        if(j == 1) return t;
+        if(j == 2) return t * t;
+        if(j == 3) return t * t * t;
+        double u = t - knots[j - 4];
+        return u > 0 ? u * u * u : 0.0;
     }
 
     public double[] getCoefficients(){ return beta.clone(); }
@@ -99,14 +90,12 @@ public class SplineRegression {
             if(sb.length() == 0) sb.append(v < 0 ? "-" : "");
             else sb.append(v < 0 ? " - " : " + ");
             if(Math.abs(v) != 1.0 || j == 0) sb.append(Matrix.formatNumber(Math.abs(v)));
-            if(j >= 1 && j <= degree){
+            if(j >= 1 && j <= 3){
                 sb.append("x");
                 if(j >= 2) sb.append("^").append(j);
-            } else if(j > degree){
-                double k = knots[j - degree - 1];
-                sb.append("(x ").append(k < 0 ? "+ " : "- ").append(Matrix.formatNumber(Math.abs(k))).append(")");
-                if(degree >= 2) sb.append("^").append(degree);
-                sb.append("_+");
+            } else if(j >= 4){
+                double k = knots[j - 4];
+                sb.append("(x ").append(k < 0 ? "+ " : "- ").append(Matrix.formatNumber(Math.abs(k))).append(")^3_+");
             }
         }
         return "y(x) = " + (sb.length() == 0 ? "0" : sb.toString());
